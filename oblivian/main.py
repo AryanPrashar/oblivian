@@ -7,6 +7,7 @@ from dotenv import load_dotenv # ADD THIS
 # Load secrets before anything else runs
 load_dotenv()
 
+print("🌑 BOOT SEQUENCE INITIATED.", flush=True)
 
 from check_inbox import get_unread_emails
 from execute import process_refund, resolve_and_archive, mark_as_read
@@ -38,12 +39,12 @@ def _handle_message(message_id: str, email_data: Dict[str, str]) -> None:
 
 
 def main() -> None:
-    print("🌑 OBLIVIAN ENGINE ONLINE. Monitoring inbox...")
+    print("🌑 OBLIVIAN ENGINE ONLINE. Monitoring inbox...", flush=True)
     while True:
         try:
             unread_emails = get_unread_emails()
             if unread_emails:
-                print(f"🌑 ECLIPSE: Scan found {len(unread_emails)} unread.")
+                print(f"🌑 ECLIPSE: Scan found {len(unread_emails)} unread.", flush=True)
 
 
             for message_id, email_data in unread_emails.items():
