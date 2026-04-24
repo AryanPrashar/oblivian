@@ -56,34 +56,40 @@ def process_refund(stripe_id: str, sender_email: str) -> Dict[str, Any]:
 
 
     stripe.api_key = secret_key
-    payment_intent = stripe.PaymentIntent.retrieve(stripe_id)
+    try:
+        payment_intent = stripe.PaymentIntent.retrieve(stripe_id)
 
 
-    normalized_sender = sender_email.strip().lower()
-    receipt_email = (
-        (getattr(payment_intent, "receipt_email", None) or "").strip().lower()
-    )
-
-
-    customer_email = ""
-    customer = getattr(payment_intent, "customer", None)
-    if isinstance(customer, dict):
-        customer_email = (customer.get("email") or "").strip().lower()
-    elif isinstance(customer, str) and customer:
-        customer_obj = stripe.Customer.retrieve(customer)
-        customer_email = (
-            (getattr(customer_obj, "email", None) or "").strip().lower()
+        normalized_sender = sender_email.strip().lower()
+        receipt_email = (
+            (getattr(payment_intent, "receipt_email", None) or "").strip().lower()
         )
-    elif customer is not None:
-        customer_email = (getattr(customer, "email", None) or "").strip().lower()
 
 
-    if normalized_sender not in {receipt_email, customer_email}:
-        raise ValueError("IDENTITY_MISMATCH: Sender does not own this transaction")
+        customer_email = ""
+        customer = getattr(payment_intent, "customer", None)
+        if isinstance(customer, dict):
+            customer_email = (customer.get("email") or "").strip().lower()
+        elif isinstance(customer, str) and customer:
+            customer_obj = stripe.Customer.retrieve(customer)
+            customer_email = (
+                (getattr(customer_obj, "email", None) or "").strip().lower()
+            )
+        elif customer is not None:
+            customer_email = (getattr(customer, "email", None) or "").strip().lower()
 
 
-    refund = stripe.Refund.create(payment_intent=stripe_id)
-    return dict(refund)
+        if normalized_sender not in {receipt_email, customer_email}:
+            raise ValueError("IDENTITY_MISMATCH: Sender does not own this transaction")
+
+
+        refund = stripe.Refund.create(payment_intent=stripe_id)
+        return dict(refund)
+    except stripe.error.StripeError as stripe_error:
+        if getattr(stripe_error, "code", None) == "charge_already_refunded":
+            print("🌑 ECLIPSE: Already refunded, proceeding to archive.")
+            return {"status": "already_refunded", "success": True}
+        raise
 
 
 # Passed stripe_id as a parameter
